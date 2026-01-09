@@ -6,12 +6,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Add executable
-add_executable(cppcaller main.cpp)
+# Add executable with SQLite3 amalgamation
+add_executable(cppcaller 
+    main.cpp
+    sqlite3/sqlite3.c
+)
 
-# Include directory for rustlib header
+# Include directories
 target_include_directories(cppcaller PRIVATE 
     ${CMAKE_SOURCE_DIR}/../rustlib
+    ${CMAKE_SOURCE_DIR}/sqlite3
 )
 
 # Link the Rust library
