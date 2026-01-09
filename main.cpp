@@ -1,9 +1,22 @@
 #include <iostream>
 #include <string>
+#include "rustlib.h"
 
-// Placeholder function that will eventually call the Rust library
+// Function that calls the Rust library to format a message
 void callRustLibrary() {
-    std::cout << "Placeholder: Rust library will be called here" << std::endl;
+    const char* input = "Hello from C++!";
+    
+    // Call the Rust library function
+    char* result = format_message_ffi(input);
+    
+    if (result != nullptr) {
+        std::cout << "Formatted message: " << result << std::endl;
+        
+        // Free the string allocated by Rust
+        free_string(result);
+    } else {
+        std::cerr << "Error: Failed to format message" << std::endl;
+    }
 }
 
 int main(int argc, char* argv[]) {
