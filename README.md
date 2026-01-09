@@ -24,4 +24,4 @@ Or with command line arguments:
 
 ## Current Status
 
-The tool currently calls a rust library to format a message and writes the result to a SQLite db in the working directory.
+The tool currently calls a Rust library to format a message and writes the result to a SQLite db in the working directory.
