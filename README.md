@@ -24,4 +24,4 @@ Or with command line arguments:
 
 ## Current Status
 
-The tool is a rudimentary command line application with a placeholder function that will eventually call the Rust library.
+The tool currently calls a Rust library to format a message and writes the result to a SQLite db in the working directory.
