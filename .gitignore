@@ -52,3 +52,6 @@ Makefile
 
 # Executable
 cppcaller
+
+# CodeQL
+_codeql_detected_source_root
