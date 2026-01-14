@@ -239,6 +239,7 @@ int main(int argc, char* argv[]) {
     };
     
     std::unique_ptr<RustLibrary> rustLib = nullptr;
+    // Initialize to FILE_NOT_FOUND as the default reason if all paths fail to find a library
     LoadFailureReason lastFailureReason = LoadFailureReason::FILE_NOT_FOUND;
     for (const auto& path : possiblePaths) {
         std::wcout << L"Attempting to load: " << path << std::endl;
@@ -248,6 +249,7 @@ int main(int argc, char* argv[]) {
             break;
         }
         // Track the last non-file-not-found error for better error reporting
+        // (prioritize signature/loading errors over simple file-not-found)
         if (result.failureReason != LoadFailureReason::FILE_NOT_FOUND) {
             lastFailureReason = result.failureReason;
         }
