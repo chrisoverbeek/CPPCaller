@@ -16,6 +16,15 @@
 typedef char* (*FormatMessageFFI)(const char*);
 typedef void (*FreeString)(char*);
 
+// Enum to track library loading failure reasons
+enum class LoadFailureReason {
+    SUCCESS,
+    FILE_NOT_FOUND,
+    SIGNATURE_VERIFICATION_FAILED,
+    LOAD_LIBRARY_FAILED,
+    FUNCTION_LOADING_FAILED
+};
+
 // Structure to hold dynamically loaded library functions
 struct RustLibrary {
     HMODULE handle = nullptr;
@@ -27,6 +36,12 @@ struct RustLibrary {
             FreeLibrary(handle);
         }
     }
+};
+
+// Structure to hold library loading result
+struct LibraryLoadResult {
+    std::unique_ptr<RustLibrary> library;
+    LoadFailureReason failureReason = LoadFailureReason::SUCCESS;
 };
 
 // Function to verify digital signature of a DLL
@@ -63,14 +78,16 @@ bool verifySignature(const wchar_t* filePath) {
 }
 
 // Function to dynamically load the Rust library
-std::unique_ptr<RustLibrary> loadRustLibrary(const std::wstring& dllPath) {
+LibraryLoadResult loadRustLibrary(const std::wstring& dllPath) {
+    LibraryLoadResult result;
     auto lib = std::make_unique<RustLibrary>();
     
     // Check if file exists
     DWORD fileAttrib = GetFileAttributesW(dllPath.c_str());
     if (fileAttrib == INVALID_FILE_ATTRIBUTES) {
         std::wcerr << L"Library not found: " << dllPath << std::endl;
-        return nullptr;
+        result.failureReason = LoadFailureReason::FILE_NOT_FOUND;
+        return result;
     }
     
     // Verify digital signature
@@ -78,7 +95,8 @@ std::unique_ptr<RustLibrary> loadRustLibrary(const std::wstring& dllPath) {
     if (!verifySignature(dllPath.c_str())) {
         std::wcerr << L"Error: Library signature verification failed!" << std::endl;
         std::wcerr << L"The library is either not signed or has an invalid signature." << std::endl;
-        return nullptr;
+        result.failureReason = LoadFailureReason::SIGNATURE_VERIFICATION_FAILED;
+        return result;
     }
     
     std::wcout << L"Signature verified successfully." << std::endl;
@@ -87,7 +105,8 @@ std::unique_ptr<RustLibrary> loadRustLibrary(const std::wstring& dllPath) {
     lib->handle = LoadLibraryW(dllPath.c_str());
     if (!lib->handle) {
         std::cerr << "Error: Failed to load library. Error code: " << GetLastError() << std::endl;
-        return nullptr;
+        result.failureReason = LoadFailureReason::LOAD_LIBRARY_FAILED;
+        return result;
     }
     
     // Get function pointers
@@ -100,11 +119,14 @@ std::unique_ptr<RustLibrary> loadRustLibrary(const std::wstring& dllPath) {
     
     if (!lib->format_message_ffi || !lib->free_string) {
         std::cerr << "Error: Failed to load required functions from library" << std::endl;
-        return nullptr;
+        result.failureReason = LoadFailureReason::FUNCTION_LOADING_FAILED;
+        return result;
     }
     
     std::cout << "Library loaded successfully." << std::endl;
-    return lib;
+    result.library = std::move(lib);
+    result.failureReason = LoadFailureReason::SUCCESS;
+    return result;
 }
 
 // Function to get current timestamp as string
@@ -217,11 +239,17 @@ int main(int argc, char* argv[]) {
     };
     
     std::unique_ptr<RustLibrary> rustLib = nullptr;
+    LoadFailureReason lastFailureReason = LoadFailureReason::FILE_NOT_FOUND;
     for (const auto& path : possiblePaths) {
         std::wcout << L"Attempting to load: " << path << std::endl;
-        rustLib = loadRustLibrary(path);
-        if (rustLib) {
+        LibraryLoadResult result = loadRustLibrary(path);
+        if (result.library) {
+            rustLib = std::move(result.library);
             break;
+        }
+        // Track the last non-file-not-found error for better error reporting
+        if (result.failureReason != LoadFailureReason::FILE_NOT_FOUND) {
+            lastFailureReason = result.failureReason;
         }
     }
     
@@ -229,7 +257,26 @@ int main(int argc, char* argv[]) {
         // Call the library function
         callRustLibrary(rustLib.get());
     } else {
-        std::cout << "\nNote: Rust library not available or not signed." << std::endl;
+        // Provide specific error message based on the failure reason
+        std::cout << "\nNote: Unable to load Rust library." << std::endl;
+        switch (lastFailureReason) {
+            case LoadFailureReason::FILE_NOT_FOUND:
+                std::cout << "Reason: Library file not found in any of the expected locations." << std::endl;
+                break;
+            case LoadFailureReason::SIGNATURE_VERIFICATION_FAILED:
+                std::cout << "Reason: Library signature verification failed." << std::endl;
+                std::cout << "The library is either not signed or has an invalid signature." << std::endl;
+                break;
+            case LoadFailureReason::LOAD_LIBRARY_FAILED:
+                std::cout << "Reason: Failed to load the library (LoadLibrary failed)." << std::endl;
+                break;
+            case LoadFailureReason::FUNCTION_LOADING_FAILED:
+                std::cout << "Reason: Library loaded but required functions could not be found." << std::endl;
+                break;
+            default:
+                std::cout << "Reason: Unknown error." << std::endl;
+                break;
+        }
         std::cout << "Continuing without Rust library functionality." << std::endl;
     }
     
