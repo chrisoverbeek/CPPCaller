@@ -44,7 +44,7 @@ bool verifySignature(const wchar_t* filePath) {
     wintrustData.pPolicyCallbackData = nullptr;
     wintrustData.pSIPClientData = nullptr;
     wintrustData.dwUIChoice = WTD_UI_NONE;
-    wintrustData.fdwRevocationChecks = WTD_REVOKE_NONE;
+    wintrustData.fdwRevocationChecks = WTD_REVOKE_WHOLECHAIN;
     wintrustData.dwUnionChoice = WTD_CHOICE_FILE;
     wintrustData.dwStateAction = WTD_STATEACTION_VERIFY;
     wintrustData.hWVTStateData = nullptr;
